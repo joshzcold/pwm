@@ -3,21 +3,19 @@
  * http://www.pwm-project.org
  *
  * Copyright (c) 2006-2009 Novell, Inc.
- * Copyright (c) 2009-2018 The PWM Project
+ * Copyright (c) 2009-2019 The PWM Project
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package password.pwm.config;
@@ -35,6 +33,7 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -56,12 +55,12 @@ public class PwmSettingXml
 
     private static final PwmLogger LOGGER = PwmLogger.forClass( PwmSettingXml.class );
 
-    private static XmlDocument xmlDocCache;
+    private static WeakReference<XmlDocument> xmlDocCache = new WeakReference<>( null );
     private static final AtomicInteger LOAD_COUNTER = new AtomicInteger( 0 );
 
     private static XmlDocument readXml( )
     {
-        final XmlDocument docRefCopy = xmlDocCache;
+        final XmlDocument docRefCopy = xmlDocCache.get();
         if ( docRefCopy == null )
         {
             final InputStream inputStream = PwmSetting.class.getClassLoader().getResourceAsStream( SETTING_XML_FILENAME );
@@ -70,30 +69,9 @@ public class PwmSettingXml
                 final Instant startTime = Instant.now();
                 final XmlDocument newDoc = XmlFactory.getFactory().parseXml( inputStream );
                 final TimeDuration parseDuration = TimeDuration.fromCurrent( startTime );
-                LOGGER.trace( () -> "parsed PwmSettingXml in " + parseDuration.toString() + ", loads=" + LOAD_COUNTER.getAndIncrement() );
+                LOGGER.trace( () -> "parsed PwmSettingXml in " + parseDuration.asCompactString() + ", loads=" + LOAD_COUNTER.getAndIncrement() );
 
-                xmlDocCache = newDoc;
-
-                // clear cached dom after 30 seconds.
-                final Thread t = new Thread( "PwmSettingXml static cache thread" )
-                {
-                    @Override
-                    public void run( )
-                    {
-                        try
-                        {
-                            Thread.sleep( 30_000 );
-                        }
-                        catch ( InterruptedException e )
-                        {
-                            //ignored
-                        }
-                        LOGGER.trace( () -> "cached PwmSettingXml discarded" );
-                        xmlDocCache = null;
-                    }
-                };
-                t.setDaemon( true );
-                t.start();
+                xmlDocCache = new WeakReference<>( newDoc );
 
                 return newDoc;
             }

@@ -3,21 +3,19 @@
  * http://www.pwm-project.org
  *
  * Copyright (c) 2006-2009 Novell, Inc.
- * Copyright (c) 2009-2018 The PWM Project
+ * Copyright (c) 2009-2019 The PWM Project
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package password.pwm;
@@ -45,6 +43,7 @@ public enum AppProperty
     AUDIT_SYSLOG_CEF_HEADER_PRODUCT                 ( "audit.syslog.cef.header.product" ),
     AUDIT_SYSLOG_CEF_HEADER_SEVERITY                ( "audit.syslog.cef.header.severity" ),
     AUDIT_SYSLOG_CEF_HEADER_VENDOR                  ( "audit.syslog.cef.header.vendor" ),
+    AUDIT_SYSLOG_CEF_MAX_EXTENSION_CHARS            ( "audit.syslog.cef.maxExtensionChars" ),
     AUDIT_SYSLOG_MAX_MESSAGE_LENGTH                 ( "audit.syslog.message.length" ),
     AUDIT_SYSLOG_TRUNCATE_MESSAGE                   ( "audit.syslog.message.truncateMsg" ),
     AUTH_ALLOW_SSO_WITH_UNKNOWN_PW                  ( "auth.allowSSOwithUnknownPassword" ),
@@ -78,7 +77,7 @@ public enum AppProperty
     CONFIG_EDITOR_QUERY_FILTER_TEST_LIMIT           ( "configEditor.queryFilter.testLimit" ),
     CONFIG_EDITOR_IDLE_TIMEOUT                      ( "configEditor.idleTimeoutSeconds" ),
     CONFIG_GUIDE_IDLE_TIMEOUT                       ( "configGuide.idleTimeoutSeconds" ),
-    CONFIG_MANAGER_ZIPDEBUG_MAXLOGLINES             ( "configManager.zipDebug.maxLogLines" ),
+    CONFIG_MANAGER_ZIPDEBUG_MAXLOGBYTES             ( "configManager.zipDebug.maxLogBytes" ),
     CONFIG_MANAGER_ZIPDEBUG_MAXLOGSECONDS           ( "configManager.zipDebug.maxLogSeconds" ),
     CLUSTER_DB_ENABLE                               ( "cluster.db.enable" ),
     CLUSTER_DB_HEARTBEAT_SECONDS                    ( "cluster.db.heartbeatSeconds" ),
@@ -194,6 +193,8 @@ public enum AppProperty
     HEALTHCHECK_MIN_CHECK_INTERVAL                  ( "healthCheck.minimumCheckIntervalSeconds" ),
     HEALTHCHECK_MAX_RECORD_AGE                      ( "healthCheck.maximumRecordAgeSeconds" ),
     HEALTHCHECK_MAX_FORCE_WAIT                      ( "healthCheck.maximumForceCheckWaitSeconds" ),
+    HEALTH_SUPPORT_BUNDLE_WRITE_INTERVAL_SECONDS    ( "health.supportBundle.file.writeIntervalSeconds" ),
+    HEALTH_SUPPORT_BUNDLE_FILE_WRITE_COUNT          ( "health.supportBundle.file.writeRetentionCount" ),
     HEALTH_CERTIFICATE_WARN_SECONDS                 ( "health.certificate.warnSeconds" ),
     HEALTH_LDAP_CAUTION_DURATION_MS                 ( "health.ldap.cautionDurationMS" ),
     HEALTH_LDAP_PROXY_WARN_PW_EXPIRE_SECONDS        ( "health.ldap.proxy.pwExpireWarnSeconds" ),
@@ -274,6 +275,7 @@ public enum AppProperty
     PASSWORD_STRENGTH_THRESHOLD_GOOD                ( "password.strength.threshold.good" ),
     PASSWORD_STRENGTH_THRESHOLD_WEAK                ( "password.strength.threshold.weak" ),
     PASSWORD_STRENGTH_THRESHOLD_VERY_WEAK           ( "password.strength.threshold.veryWeak" ),
+    PASSWORD_RULE_WORDLIST_FAIL_WHEN_CLOSED         ( "password.rule.wordlist.failWhenClosed" ),
     PWNOTIFY_BATCH_COUNT                            ( "pwNotify.batch.count" ),
     PWNOTIFY_BATCH_DELAY_TIME_MULTIPLIER            ( "pwNotify.batch.delayTimeMultiplier" ),
     PWNOTIFY_MAX_LDAP_SEARCH_SIZE                   ( "pwNotify.maxLdapSearchSize" ),
@@ -321,11 +323,14 @@ public enum AppProperty
     SECURITY_SHAREDHISTORY_HASH_NAME                ( "security.sharedHistory.hashName" ),
     SECURITY_SHAREDHISTORY_CASE_INSENSITIVE         ( "security.sharedHistory.caseInsensitive" ),
     SECURITY_SHAREDHISTORY_SALT_LENGTH              ( "security.sharedHistory.saltLength" ),
+    SECURITY_CERTIFICATES_ALLOW_SELF_SIGNED         ( "security.certs.allowSelfSigned" ),
     SECURITY_CERTIFICATES_VALIDATE_TIMESTAMPS       ( "security.certs.validateTimestamps" ),
     SECURITY_CONFIG_MIN_SECURITY_KEY_LENGTH         ( "security.config.minSecurityKeyLength" ),
     SECURITY_DEFAULT_EPHEMERAL_BLOCK_ALG            ( "security.defaultEphemeralBlockAlg" ),
     SECURITY_DEFAULT_EPHEMERAL_HASH_ALG             ( "security.defaultEphemeralHashAlg" ),
     SEEDLIST_BUILTIN_PATH                           ( "seedlist.builtin.path" ),
+    SMTP_IO_CONNECT_TIMEOUT                         ( "smtp.io.connectTimeoutMs" ),
+    SMTP_IO_READ_TIMEOUT                            ( "smtp.io.readTimeoutMs" ),
     SMTP_SUBJECT_ENCODING_CHARSET                   ( "smtp.subjectEncodingCharset" ),
     SMTP_RETRYABLE_SEND_RESPONSE_STATUSES           ( "smtp.retryableSendResponseStatus" ),
     TOKEN_CLEANER_INTERVAL_SECONDS                  ( "token.cleaner.intervalSeconds" ),
@@ -339,6 +344,8 @@ public enum AppProperty
     TOKEN_REMOVE_ON_CLAIM                           ( "token.removeOnClaim" ),
     TOKEN_VERIFY_PW_MODIFY_TIME                     ( "token.verifyPwModifyTime" ),
     TOKEN_STORAGE_MAX_KEY_LENGTH                    ( "token.storage.maxKeyLength" ),
+    REST_SERVER_FORGOTTEN_PW_TOKEN_DISPLAY          ( "rest.server.forgottenPW.token.display" ),
+    REST_SERVER_FORGOTTEN_PW_RULE_DELIMITER         ( "rest.server.forgottenPW.ruleDelimiter" ),
     TELEMETRY_SENDER_IMPLEMENTATION                 ( "telemetry.senderImplementation" ),
     TELEMETRY_SENDER_SETTINGS                       ( "telemetry.senderSettings" ),
     TELEMETRY_SEND_FREQUENCY_SECONDS                ( "telemetry.sendFrequencySeconds" ),

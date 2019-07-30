@@ -3,21 +3,19 @@
  * http://www.pwm-project.org
  *
  * Copyright (c) 2006-2009 Novell, Inc.
- * Copyright (c) 2009-2018 The PWM Project
+ * Copyright (c) 2009-2019 The PWM Project
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package password.pwm.svc.token;
@@ -46,7 +44,7 @@ import password.pwm.error.PwmOperationalException;
 import password.pwm.error.PwmUnrecoverableException;
 import password.pwm.health.HealthMessage;
 import password.pwm.health.HealthRecord;
-import password.pwm.http.PwmSession;
+import password.pwm.http.CommonValues;
 import password.pwm.ldap.UserInfo;
 import password.pwm.ldap.auth.SessionAuthenticator;
 import password.pwm.svc.PwmService;
@@ -247,7 +245,7 @@ public class TokenService implements PwmService
 
     private void markTokenAsClaimed(
             final TokenKey tokenKey,
-            final PwmSession pwmSession,
+            final SessionLabel sessionLabel,
             final TokenPayload tokenPayload
     )
             throws PwmUnrecoverableException
@@ -263,19 +261,19 @@ public class TokenService implements PwmService
         {
             try
             {
-                LOGGER.trace( pwmSession, () -> "removing claimed token: " + tokenPayload.toDebugString() );
+                LOGGER.trace( sessionLabel, () -> "removing claimed token: " + tokenPayload.toDebugString() );
                 tokenMachine.removeToken( tokenKey );
             }
             catch ( PwmOperationalException e )
             {
-                LOGGER.error( pwmSession, "error clearing claimed token: " + e.getMessage() );
+                LOGGER.error( sessionLabel, "error clearing claimed token: " + e.getMessage() );
             }
         }
 
         final AuditRecord auditRecord = new AuditRecordFactory( pwmApplication ).createUserAuditRecord(
                 AuditEvent.TOKEN_CLAIMED,
                 tokenPayload.getUserIdentity(),
-                pwmSession.getLabel(),
+                sessionLabel,
                 JsonUtil.serialize( tokenPayload )
         );
         pwmApplication.getAuditManager().submit( auditRecord );
@@ -535,7 +533,7 @@ public class TokenService implements PwmService
     }
 
     public TokenPayload processUserEnteredCode(
-            final PwmSession pwmSession,
+            final CommonValues commonValues,
             final UserIdentity sessionUserIdentity,
             final TokenType tokenType,
             final String userEnteredCode,
@@ -543,10 +541,11 @@ public class TokenService implements PwmService
     )
             throws PwmOperationalException, PwmUnrecoverableException
     {
+        final SessionLabel sessionLabel = commonValues.getSessionLabel();
         try
         {
             final TokenPayload tokenPayload = processUserEnteredCodeImpl(
-                    pwmSession,
+                    sessionLabel,
                     sessionUserIdentity,
                     tokenType,
                     userEnteredCode
@@ -555,7 +554,7 @@ public class TokenService implements PwmService
             {
                 pwmApplication.getIntruderManager().clear( RecordType.TOKEN_DEST, tokenPayload.getDestination().getValue() );
             }
-            markTokenAsClaimed( tokenMachine.keyFromKey( userEnteredCode ), pwmSession, tokenPayload );
+            markTokenAsClaimed( tokenMachine.keyFromKey( userEnteredCode ), sessionLabel, tokenPayload );
             return tokenPayload;
         }
         catch ( Exception e )
@@ -570,22 +569,20 @@ public class TokenService implements PwmService
                 errorInformation = new ErrorInformation( PwmError.ERROR_TOKEN_INCORRECT, e.getMessage() );
             }
 
-            LOGGER.debug( pwmSession, errorInformation );
+            LOGGER.debug( sessionLabel, errorInformation );
 
             if ( sessionUserIdentity != null && tokenEntryType == TokenEntryType.unauthenticated )
             {
-                final SessionAuthenticator sessionAuthenticator = new SessionAuthenticator( pwmApplication, pwmSession, null );
-                sessionAuthenticator.simulateBadPassword( sessionUserIdentity );
-                pwmApplication.getIntruderManager().convenience().markUserIdentity( sessionUserIdentity, pwmSession );
+                SessionAuthenticator.simulateBadPassword( commonValues, sessionUserIdentity );
+                pwmApplication.getIntruderManager().convenience().markUserIdentity( sessionUserIdentity, sessionLabel );
             }
-            pwmApplication.getIntruderManager().convenience().markAddressAndSession( pwmSession );
             pwmApplication.getStatisticsManager().incrementValue( Statistic.RECOVERY_FAILURES );
             throw new PwmOperationalException( errorInformation );
         }
     }
 
     private TokenPayload processUserEnteredCodeImpl(
-            final PwmSession pwmSession,
+            final SessionLabel sessionLabel,
             final UserIdentity sessionUserIdentity,
             final TokenType tokenType,
             final String userEnteredCode
@@ -595,7 +592,7 @@ public class TokenService implements PwmService
         final TokenPayload tokenPayload;
         try
         {
-            tokenPayload = pwmApplication.getTokenService().retrieveTokenData( pwmSession.getLabel(), userEnteredCode );
+            tokenPayload = pwmApplication.getTokenService().retrieveTokenData( sessionLabel, userEnteredCode );
         }
         catch ( PwmOperationalException e )
         {
@@ -609,7 +606,7 @@ public class TokenService implements PwmService
             throw new PwmOperationalException( errorInformation );
         }
 
-        LOGGER.trace( pwmSession, () -> "retrieved tokenPayload: " + tokenPayload.toDebugString() );
+        LOGGER.trace( sessionLabel, () -> "retrieved tokenPayload: " + tokenPayload.toDebugString() );
 
         if ( tokenType != null && pwmApplication.getTokenService().supportsName() )
         {
@@ -641,12 +638,12 @@ public class TokenService implements PwmService
             {
                 final Instant userLastPasswordChange = PasswordUtility.determinePwdLastModified(
                         pwmApplication,
-                        pwmSession.getLabel(),
+                        sessionLabel,
                         tokenPayload.getUserIdentity() );
 
                 final String dateStringInToken = tokenPayload.getData().get( PwmConstants.TOKEN_KEY_PWD_CHG_DATE );
 
-                LOGGER.trace( pwmSession, () -> "tokenPayload=" + tokenPayload.toDebugString()
+                LOGGER.trace( sessionLabel, () -> "tokenPayload=" + tokenPayload.toDebugString()
                         + ", sessionUser=" + ( sessionUserIdentity == null ? "null" : sessionUserIdentity.toDisplayString() )
                         + ", payloadUserIdentity=" + tokenPayload.getUserIdentity().toDisplayString()
                         + ", userLastPasswordChange=" + JavaHelper.toIsoDate( userLastPasswordChange )
@@ -661,7 +658,7 @@ public class TokenService implements PwmService
                     {
                         final String errorString = "user password has changed since token issued, token rejected;"
                                 + " currentValue=" + userChangeString + ", tokenValue=" + dateStringInToken;
-                        LOGGER.trace( pwmSession, () -> errorString + "; token=" + tokenPayload.toDebugString() );
+                        LOGGER.trace( sessionLabel, () -> errorString + "; token=" + tokenPayload.toDebugString() );
                         final ErrorInformation errorInformation = new ErrorInformation( PwmError.ERROR_TOKEN_EXPIRED, errorString );
                         throw new PwmOperationalException( errorInformation );
                     }
@@ -675,7 +672,7 @@ public class TokenService implements PwmService
             }
         }
 
-        LOGGER.debug( pwmSession, () -> "token validation has been passed" );
+        LOGGER.debug( sessionLabel, () -> "token validation has been passed" );
         return tokenPayload;
     }
 

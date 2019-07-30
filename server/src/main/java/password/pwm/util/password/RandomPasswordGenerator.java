@@ -3,24 +3,22 @@
  * http://www.pwm-project.org
  *
  * Copyright (c) 2006-2009 Novell, Inc.
- * Copyright (c) 2009-2018 The PWM Project
+ * Copyright (c) 2009-2019 The PWM Project
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-package password.pwm.util;
+package password.pwm.util.password;
 
 import com.novell.ldapchai.exception.ImpossiblePasswordPolicyException;
 import lombok.Builder;
@@ -35,11 +33,11 @@ import password.pwm.config.profile.PwmPasswordRule;
 import password.pwm.error.ErrorInformation;
 import password.pwm.error.PwmError;
 import password.pwm.error.PwmUnrecoverableException;
-import password.pwm.http.PwmSession;
 import password.pwm.svc.PwmService;
 import password.pwm.svc.stats.Statistic;
 import password.pwm.svc.stats.StatisticsManager;
 import password.pwm.svc.wordlist.SeedlistService;
+import password.pwm.util.PasswordData;
 import password.pwm.util.java.TimeDuration;
 import password.pwm.util.logging.PwmLogger;
 import password.pwm.util.operations.PasswordUtility;
@@ -77,16 +75,6 @@ public class RandomPasswordGenerator
     ) ) );
 
     private static final PwmLogger LOGGER = PwmLogger.forClass( RandomPasswordGenerator.class );
-
-    public static PasswordData createRandomPassword(
-            final PwmSession pwmSession,
-            final PwmApplication pwmApplication
-    )
-            throws PwmUnrecoverableException
-    {
-        final PwmPasswordPolicy userPasswordPolicy = pwmSession.getUserInfo().getPasswordPolicy();
-        return createRandomPassword( pwmSession.getLabel(), userPasswordPolicy, pwmApplication );
-    }
 
     public static PasswordData createRandomPassword(
             final SessionLabel sessionLabel,
@@ -197,7 +185,7 @@ public class RandomPasswordGenerator
         password.append( generateNewPassword( pwmRandom, seedMachine, effectiveConfig.getMinimumLength() ) );
 
         // read a rule validator
-        final PwmPasswordRuleValidator pwmPasswordRuleValidator = new PwmPasswordRuleValidator( pwmApplication, randomGenPolicy );
+
 
         // modify until it passes all the rules
         final int maxTryCount = Integer.parseInt( pwmApplication.getConfig().readAppProperty( AppProperty.PASSWORD_RANDOMGEN_MAX_ATTEMPTS ) );
@@ -214,8 +202,9 @@ public class RandomPasswordGenerator
                 password.append( generateNewPassword( pwmRandom, seedMachine, effectiveConfig.getMinimumLength() ) );
             }
 
+            final PwmPasswordRuleValidator pwmPasswordRuleValidator = new PwmPasswordRuleValidator( pwmApplication, randomGenPolicy, PwmPasswordRuleValidator.Flag.FailFast );
             final List<ErrorInformation> errors = pwmPasswordRuleValidator.internalPwmPolicyValidator(
-                    password.toString(), null, null, PwmPasswordRuleValidator.Flag.FailFast );
+                    password.toString(), null, null );
             if ( errors != null && !errors.isEmpty() )
             {
                 validPassword = false;
@@ -232,6 +221,7 @@ public class RandomPasswordGenerator
         // report outcome
         {
             final TimeDuration td = TimeDuration.fromCurrent( startTime );
+            final PwmPasswordRuleValidator pwmPasswordRuleValidator = new PwmPasswordRuleValidator( pwmApplication, randomGenPolicy );
             if ( validPassword )
             {
                 final int finalTryCount = tryCount;

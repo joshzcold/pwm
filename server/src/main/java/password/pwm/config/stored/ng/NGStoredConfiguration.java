@@ -3,29 +3,32 @@
  * http://www.pwm-project.org
  *
  * Copyright (c) 2006-2009 Novell, Inc.
- * Copyright (c) 2009-2018 The PWM Project
+ * Copyright (c) 2009-2019 The PWM Project
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-package password.pwm.config.stored;
+package password.pwm.config.stored.ng;
 
 import password.pwm.bean.UserIdentity;
 import password.pwm.config.PwmSetting;
 import password.pwm.config.PwmSettingCategory;
 import password.pwm.config.StoredValue;
+import password.pwm.config.stored.ConfigurationProperty;
+import password.pwm.config.stored.StoredConfigReference;
+import password.pwm.config.stored.StoredConfigReferenceBean;
+import password.pwm.config.stored.StoredConfiguration;
+import password.pwm.config.stored.ValueMetaData;
 import password.pwm.config.value.StringValue;
 import password.pwm.error.PwmUnrecoverableException;
 import password.pwm.util.java.JavaHelper;
@@ -33,20 +36,19 @@ import password.pwm.util.logging.PwmLogger;
 import password.pwm.util.secure.PwmSecurityKey;
 
 import java.time.Instant;
-import java.util.Map;
 
-class NGStoredConfiguration implements StoredConfiguration
+public class NGStoredConfiguration implements StoredConfiguration
 {
     private static final PwmLogger LOGGER = PwmLogger.forClass( NGStoredConfiguration.class );
     private final PwmSecurityKey configurationSecurityKey;
-    private final StorageEngine engine;
+    private final NGStorageEngineImpl engine;
+    private boolean readOnly = false;
 
     NGStoredConfiguration(
-            final Map<StoredConfigReference, StoredValue> values,
-            final Map<StoredConfigReference, ValueMetaData> metaValues,
+            final NGStorageEngineImpl storageEngine,
             final PwmSecurityKey pwmSecurityKey )
     {
-        engine = new NGStorageEngineImpl( values, metaValues );
+        engine = storageEngine;
         configurationSecurityKey = pwmSecurityKey;
     }
 
@@ -65,7 +67,9 @@ class NGStoredConfiguration implements StoredConfiguration
         return ( String ) storedValue.toNativeObject();
     }
 
-    public void writeConfigProperty( final ConfigurationProperty configurationProperty, final String value )
+    public void writeConfigProperty(
+            final ConfigurationProperty configurationProperty,
+            final String value )
     {
         final StoredConfigReference storedConfigReference = new StoredConfigReferenceBean(
                 StoredConfigReference.RecordType.PROPERTY,
@@ -73,7 +77,7 @@ class NGStoredConfiguration implements StoredConfiguration
                 null
         );
         final StoredValue storedValue = new StringValue( value );
-        engine.write( storedConfigReference, storedValue, null );
+        engine.write( storedConfigReference, storedValue, null  );
     }
 
     public void resetSetting( final PwmSetting setting, final String profileID, final UserIdentity userIdentity )
@@ -158,13 +162,13 @@ class NGStoredConfiguration implements StoredConfiguration
     @Override
     public boolean isLocked( )
     {
-        return engine.isWriteLocked();
+        return readOnly;
     }
 
     @Override
     public void lock( )
     {
-        engine.writeLock();
+        readOnly = true;
     }
 
     @Override

@@ -3,21 +3,19 @@
  * http://www.pwm-project.org
  *
  * Copyright (c) 2006-2009 Novell, Inc.
- * Copyright (c) 2009-2018 The PWM Project
+ * Copyright (c) 2009-2019 The PWM Project
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package password.pwm.util;
@@ -25,6 +23,7 @@ package password.pwm.util;
 import org.jetbrains.annotations.NotNull;
 import password.pwm.PwmApplication;
 import password.pwm.PwmConstants;
+import password.pwm.util.java.JavaHelper;
 import password.pwm.util.java.StringUtil;
 import password.pwm.util.java.TimeDuration;
 import password.pwm.util.logging.PwmLogger;
@@ -66,16 +65,15 @@ public class PwmScheduler
     {
         Objects.requireNonNull( runnable );
 
-        final ExecutorService executor = makeSingleThreadExecutorService( instanceID, runnable.getClass() );
+        final ScheduledExecutorService executor = makeSingleThreadExecutorService( instanceID, runnable.getClass() );
 
         if ( applicationExecutorService.isShutdown() )
         {
             return null;
         }
 
-        final WrappedRunner wrappedRunner = new WrappedRunner( runnable, executor );
-        applicationExecutorService.schedule( wrappedRunner, 0, TimeUnit.MILLISECONDS );
-        executor.shutdown();
+        final WrappedRunner wrappedRunner = new WrappedRunner( runnable, executor, WrappedRunner.Flag.ShutdownExecutorAfterExecution );
+        applicationExecutorService.submit( wrappedRunner );
         return wrappedRunner.getFuture();
     }
 
@@ -90,7 +88,7 @@ public class PwmScheduler
         scheduleFixedRateJob( runnable, executorService, delayTillNextOFfiset, TimeDuration.DAY );
     }
 
-    public Future scheduleFutureJob(
+    public Future scheduleJob(
             final Runnable runnable,
             final ExecutorService executor,
             final TimeDuration delay
@@ -222,13 +220,20 @@ public class PwmScheduler
     {
         private final Runnable runnable;
         private final ExecutorService executor;
+        private final Flag[] flags;
         private volatile Future innerFuture;
         private volatile boolean hasFailed;
 
-        WrappedRunner( final Runnable runnable, final ExecutorService executor )
+        enum Flag
+        {
+            ShutdownExecutorAfterExecution,
+        }
+
+        WrappedRunner( final Runnable runnable, final ExecutorService executor, final Flag... flags )
         {
             this.runnable = runnable;
             this.executor = executor;
+            this.flags = flags;
         }
 
         Future getFuture()
@@ -286,6 +291,11 @@ public class PwmScheduler
             {
                 LOGGER.error( "unexpected error running scheduled job: " + t.getMessage(), t );
                 hasFailed = true;
+            }
+
+            if ( JavaHelper.enumArrayContainsValue( flags, Flag.ShutdownExecutorAfterExecution ) )
+            {
+                executor.shutdown();
             }
         }
     }

@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   ~ Password Management Servlets (PWM)
+  ~ http://www.pwm-project.org
+  ~
   ~ Copyright (c) 2006-2009 Novell, Inc.
-  ~ Copyright (c) 2009-2018 The PWM Project
+  ~ Copyright (c) 2009-2019 The PWM Project
   ~
-  ~ This program is free software; you can redistribute it and/or modify
-  ~ it under the terms of the GNU General Public License as published by
-  ~ the Free Software Foundation; either version 2 of the License, or
-  ~ (at your option) any later version.
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
   ~
-  ~ This program is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  ~ GNU General Public License for more details.
+  ~     http://www.apache.org/licenses/LICENSE-2.0
   ~
-  ~ You should have received a copy of the GNU General Public License
-  ~ along with this program; if not, write to the Free Software
-  ~ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
   -->
 
 <!--
@@ -94,11 +94,11 @@
         <flag>Select_AllowUserInput</flag>
         <regex>^/.+</regex>
         <default>
-            <value>/private</value>
+            <value>/private/</value>
         </default>
         <options>
-            <option value="/private">/private</option>
-            <option value="/public">/public</option>
+            <option value="/private/">/private</option>
+            <option value="/public/">/public</option>
         </options>
     </setting>
     <setting hidden="false" key="idleTimeoutSeconds" level="1" required="true">
@@ -711,6 +711,22 @@
             <property key="Maximum">65535</property>
         </properties>
     </setting>
+    <setting hidden="false" key="email.smtp.type" level="1">
+        <default>
+            <value>SMTP</value>
+        </default>
+        <options>
+            <option value="SMTP">SMTP (Plaintext)</option>
+            <option value="START_TLS">StartTLS</option>
+            <option value="SMTPS">SMTPS (SSL/TLS)</option>
+        </options>
+    </setting>
+    <setting hidden="false" key="email.smtp.serverCerts" level="0" required="true">
+        <default/>
+        <properties>
+            <property key="Cert_ImportHandler">password.pwm.config.function.SmtpCertImportFunction</property>
+        </properties>
+    </setting>
     <setting hidden="false" key="email.smtp.username" level="1">
         <default>
             <value />
@@ -1315,9 +1331,7 @@
         <default/>
     </setting>
     <setting hidden="false" key="password.policy.ruleText" level="2">
-        <default>
-            <value />
-        </default>
+        <default/>
     </setting>
     <setting hidden="false" key="password.policy.disallowCurrent" level="2" required="true">
         <default>
@@ -1571,7 +1585,7 @@
     </setting>
     <setting hidden="false" key="security.certificate.validationMode" level="2">
         <default>
-            <value>CERTIFICATE_CHAIN</value>
+            <value>CA_ONLY</value>
         </default>
         <options>
             <option value="CA_ONLY">Root Certificate Only</option>
@@ -1629,8 +1643,7 @@
     </setting>
     <setting hidden="false" key="security.cspHeader" level="2">
         <default>
-            <!--<value><![CDATA[]]></value>-->
-            <value><![CDATA[default-src 'self'; object-src 'none'; img-src 'self' data:; style-src 'self'; script-src https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ 'self' 'nonce-%NONCE%' ; frame-src https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; report-uri /sspr/public/command/cspReport]]></value>
+            <value><![CDATA[default-src 'self'; object-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ 'self' 'unsafe-eval' 'nonce-%NONCE%'; frame-src https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; report-uri /sspr/public/command/cspReport]]></value>
         </default>
     </setting>
     <setting hidden="false" key="email.adminAlert.toAddress" level="1">
@@ -3074,9 +3087,7 @@
         </default>
     </setting>
     <setting hidden="false" key="updateAttributes.customLinks" level="1">
-        <default>
-            <value></value>
-        </default>
+        <default/>
     </setting>
     <setting hidden="false" key="updateAttributes.token.lifetime" level="1" required="true">
         <default>
@@ -3944,11 +3955,6 @@
             <value>false</value>
         </default>
     </setting>
-    <setting hidden="false" key="webservices.healthStats.makePublic" level="2">
-        <default>
-            <value>false</value>
-        </default>
-    </setting>
     <setting hidden="false" key="webservices.external.secrets" level="2">
         <default/>
         <options>
@@ -3979,6 +3985,14 @@
         <default syntaxVersion="2">
             <value/>
         </default>
+    </setting>
+    <setting hidden="false" key="webservices.public.enable" level="2">
+        <default/>
+        <options>
+            <option value="Health">Health - /health</option>
+            <option value="ForgottenPassword">Forgotten Password - /forgottenpassword</option>
+            <option value="Statistics">Statistics - /statistics</option>
+        </options>
     </setting>
     <setting hidden="false" key="external.macros.urls" level="2">
         <default />
@@ -4082,6 +4096,11 @@
         </default>
     </setting>
     <setting hidden="true" key="helpdesk.otp.verify" level="1">
+        <default>
+            <value>false</value>
+        </default>
+    </setting>
+    <setting hidden="true" key="webservices.healthStats.makePublic" level="2">
         <default>
             <value>false</value>
         </default>

@@ -3,21 +3,19 @@
  * http://www.pwm-project.org
  *
  * Copyright (c) 2006-2009 Novell, Inc.
- * Copyright (c) 2009-2018 The PWM Project
+ * Copyright (c) 2009-2019 The PWM Project
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package password.pwm.http.filter;
@@ -45,6 +43,7 @@ import password.pwm.http.PwmRequest;
 import password.pwm.http.PwmResponse;
 import password.pwm.http.PwmSession;
 import password.pwm.http.PwmURL;
+import password.pwm.svc.stats.AvgStatistic;
 import password.pwm.svc.stats.Statistic;
 import password.pwm.util.java.StringUtil;
 import password.pwm.util.java.TimeDuration;
@@ -137,6 +136,9 @@ public class SessionFilter extends AbstractPwmFilter
 
         final TimeDuration requestExecuteTime = TimeDuration.fromCurrent( startTime );
         pwmRequest.debugHttpRequestToLog( "completed requestID=" + requestID + " in " + requestExecuteTime.asCompactString() );
+        pwmRequest.getPwmApplication().getStatisticsManager().updateAverageValue( AvgStatistic.AVG_REQUEST_PROCESS_TIME, requestExecuteTime.asMillis() );
+        pwmRequest.getPwmSession().getSessionStateBean().getRequestCount().incrementAndGet();
+        pwmRequest.getPwmSession().getSessionStateBean().getAvgRequestDuration().update( requestExecuteTime.asMillis() );
     }
 
     private ProcessStatus handleStandardRequestOperations(
@@ -155,7 +157,7 @@ public class SessionFilter extends AbstractPwmFilter
         // debug the http session headers
         if ( !pwmSession.getSessionStateBean().isDebugInitialized() )
         {
-            LOGGER.trace( pwmSession, () -> pwmRequest.debugHttpHeaders() );
+            LOGGER.trace( pwmSession, pwmRequest::debugHttpHeaders );
             pwmSession.getSessionStateBean().setDebugInitialized( true );
         }
 
@@ -307,6 +309,13 @@ public class SessionFilter extends AbstractPwmFilter
 
         if ( pwmRequest.getURL().isCommandServletURL() )
         {
+            LOGGER.debug( pwmRequest, () -> "session is unvalidated but can not be validated during a command servlet request, will allow" );
+            return ProcessStatus.Continue;
+        }
+
+        if ( pwmRequest.getURL().isResourceURL() )
+        {
+            LOGGER.debug( pwmRequest, () -> "session is unvalidated but can not be validated during a resource request, will allow" );
             return ProcessStatus.Continue;
         }
 
